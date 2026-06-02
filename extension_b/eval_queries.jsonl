@@ -1,0 +1,20 @@
+{"query": "recipes with eggplnt", "expected": "recoverable", "rationale": "Misspelled 'eggplant'; CONTAINS(LCASE(label), 'eggpl') matches :eggplant."}
+{"query": "recipes using basill", "expected": "recoverable", "rationale": "Misspelled 'basil'; CONTAINS(LCASE(label), 'basil') matches :basil and :freshBasil."}
+{"query": "italian recipe with eggpla", "expected": "recoverable", "rationale": "Truncated 'eggplant'; partial CONTAINS hits."}
+{"query": "recipes with parmesn cheese", "expected": "recoverable", "rationale": "Misspelled 'parmesan'."}
+{"query": "tomatoe recipes", "expected": "recoverable", "rationale": "Common misspelling of 'tomato'."}
+{"query": "recipes with garlick", "expected": "recoverable", "rationale": "Misspelled 'garlic'."}
+{"query": "thaii cuisine recipes", "expected": "recoverable", "rationale": "Doubled 'i' in 'thai'."}
+{"query": "recipes with tomatoes", "expected": "recoverable", "rationale": "Plural of 'tomato'."}
+{"query": "recipes by Marko", "expected": "recoverable", "rationale": "Misspelled 'marco' author."}
+{"query": "recipes with auberginee", "expected": "recoverable", "rationale": "Misspelled altLabel 'aubergine' (eggplant)."}
+{"query": "recipes with asparagus", "expected": "empty", "rationale": "Asparagus is not in the KG; fuzzy match must not paper over."}
+{"query": "recipes by chef Bourdain", "expected": "empty", "rationale": "Author not in the KG."}
+{"query": "vietnamese cuisine recipes", "expected": "empty", "rationale": "Vietnamese cuisine not in the KG."}
+{"query": "recipes with quinoa", "expected": "empty", "rationale": "Quinoa not in the KG."}
+{"query": "recipes with truffle oil", "expected": "empty", "rationale": "Truffle oil not in the KG."}
+{"query": "vegan recipes", "expected": "empty", "rationale": "No vegan diet label in the KG."}
+{"query": "recipes from 1990", "expected": "empty", "rationale": "No year predicate in the KG."}
+{"query": "recipes by chef Ramsay", "expected": "empty", "rationale": "Author not in the KG."}
+{"query": "korean cuisine recipes", "expected": "empty", "rationale": "Korean cuisine not in the KG."}
+{"query": "recipes with saffron", "expected": "empty", "rationale": "Saffron not in the KG."}
