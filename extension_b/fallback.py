@@ -29,9 +29,15 @@ def fuzzy_fallback(query: str, fuseki_endpoint: str) -> List[dict]:
     # whitespace + stopword removal is enough.
 
     # TODO: issue a SPARQL query against the recipes KG that matches
-    # ?label loosely via regex or CONTAINS(LCASE(...), ...). Bind the
-    # candidate surface fragment via SPARQLWrapper.addParameter — do NOT
-    # interpolate it into the query body.
+    # ?label loosely via regex or CONTAINS(LCASE(...), ...). Parameterize
+    # the candidate surface fragment via rdflib
+    # Graph.query(q, initBindings={"surface": Literal(s)}) — do NOT
+    # interpolate it into the query body, and do NOT use
+    # SPARQLWrapper.addParameter (it adds an HTTP query parameter that the
+    # SPARQL engine ignores, so ?surface stays unbound and the query
+    # returns zero rows). Same rdflib SPARQLStore pattern as the Lab 9B
+    # linker — include `VALUES ?surface { UNDEF }` inside the WHERE clause
+    # so initBindings flows into the FILTER / CONTAINS expression.
 
     # TODO: return result dicts in the same shape as pipeline_base. If
     # nothing matches, return [].
