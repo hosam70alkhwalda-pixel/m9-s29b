@@ -1,0 +1,10 @@
+[
+  {"query": "stir-fried spicy chicken with peppercorn and peanuts", "gold_recipe_ids": ["recipe:002", "recipe:042", "recipe:043"]},
+  {"query": "silky tofu in fiery sichuan numbing sauce", "gold_recipe_ids": ["recipe:001", "recipe:043", "recipe:041"]},
+  {"query": "fresh tomato mozzarella and basil from southern italy", "gold_recipe_ids": ["recipe:011", "recipe:013", "recipe:020"]},
+  {"query": "vinegared rice rolled with seaweed and fresh fish", "gold_recipe_ids": ["recipe:022", "recipe:023", "recipe:028"]},
+  {"query": "warm tortillas with marinated grilled meat and lime", "gold_recipe_ids": ["recipe:031", "recipe:032", "recipe:033"]},
+  {"query": "noodle soup with rich pork broth and toppings", "gold_recipe_ids": ["recipe:003", "recipe:029", "recipe:041"]},
+  {"query": "creamy oven-baked layered pasta with meat sauce", "gold_recipe_ids": ["recipe:015", "recipe:020", "recipe:016"]},
+  {"query": "fluffy stack of pancakes with maple syrup for breakfast", "gold_recipe_ids": ["recipe:047", "recipe:049"]}
+]

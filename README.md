@@ -1,71 +1,92 @@
-# Module 9 Week B — Stretch (Honors Track): Pipeline Extension
+# Module 9 Week B — Stretch Thu — GraphRAG Hybrid Retrieval on Neo4j
 
-> **Honors Track.** This stretch is for learners who have completed the required Week B work (Reading, Drill, Lab, Integration) and are On Track or Advanced. Stretch is not required for program completion but is required for Honors distinction.
+> **Honors Track.** Stretch is for learners who have completed all
+> core assignments, are On Track or Advanced, and are attending
+> consistently. See the cohort Honors Track policy for details.
 
-For the full task description, see the assignment page: **Module 9 Week B — Stretch: Pipeline Extension**.
+This stretch implements **GraphRAG hybrid retrieval** over the Module 9
+Week B recipe knowledge graph. You will combine Neo4j 5.x's **native
+vector index** (over recipe descriptions, embedded with
+`sentence-transformers/all-MiniLM-L6-v2`) with **1-hop Cypher
+traversal** (cuisine, author, ingredients) and **fuse** the two
+signals into a single ranked retrieval score.
 
-## What you are building
+## Production-discipline framing
 
-You extend the Week B integration's NL→KG pipeline with **one** of two pre-approved capabilities. The base pipeline (`pipeline_base.py`) is shipped working — you do not modify it. You build a thin extension layer on top.
+Hybrid retrieval — vector index + graph traversal fused at answer time
+— is a **first-class production pattern**, not a hack or a fallback.
+It is the *schema-bounded NL→evidence* primitive you already saw on
+Weaviate in Module 8 (vector-only) and that you will meet again on the
+deployment surface in Module 10 (as the retrieval layer behind a
+FastAPI service). The engine differs across the M8 → M9 → M10 bridge
+(Weaviate's HNSW versus Neo4j's native vector index versus whatever
+production engine sits behind a deployed service); the primitive does
+not. The carry-forward is deliberate.
 
-### Direction (a) — Explainability
+## Prerequisites
 
-Add a per-result **trace** that records:
-- the SPARQL fragment that produced each result row,
-- the linker decisions (URIs + reasons) that fed the slot bindings,
-- the bindings themselves.
+- **Integration 9B complete** (you have a working deterministic
+  NL→Cypher mapper).
+- **Lab 9B complete** (you understand the recipe-domain schema this
+  stretch loads a subset of).
 
-Traces must be reproducible: re-issuing the recorded SPARQL fragment with the recorded bindings against the same KG must return the same row.
+## What you will build
 
-You implement `extension_a/trace.py`.
+You will complete four small modules under `retrieval/`:
 
-### Direction (b) — Robustness
+| File | What you implement |
+|---|---|
+| `vector_search.py` | `vector_candidates(driver, embedder, query, k)` — query the Neo4j vector index for the top-k vector-similar recipes |
+| `traversal.py` | `expand_context(driver, recipe_id)` — 1-hop Cypher traversal for cuisine, author, ingredients |
+| `fuse.py` | `fuse(vector_results, contexts)` — combine vector score + structural completeness into one ranked score |
+| `hybrid.py` | `hybrid_retrieve(driver, embedder, query, k=10)` — orchestrate all three steps |
 
-Add a **fuzzy-match fallback** that runs when the linker returns NIL on a key entity. The fallback uses SPARQL `regex()` or `CONTAINS(LCASE(...), ...)` to recover results the strict linker dropped.
+Course-provided (do not modify):
 
-You implement `extension_b/fallback.py` and evaluate against `extension_b/eval_queries.jsonl` — 20 queries, half recoverable, half should still return empty.
-
-## Choose your direction
-
-Edit `DIRECTION.md` and replace `UNDECLARED` with `a` or `b` on its own line. The autograder reads it and dispatches.
+- `retrieval/embed.py` — wraps `all-MiniLM-L6-v2` (384-dim).
+- `load_fixture.py` — loads the recipe KG, creates the vector index,
+  embeds every recipe description, and runs acceptance assertions.
+- `data/recipes_kg.cypher` — the fixture (~83 nodes).
+- `data/eval_queries.json` — 8 paraphrastic NL queries with gold
+  recipe-id sets, used by the autograder for recall@10.
 
 ## Setup
 
+Local Neo4j (one-time per machine):
+
 ```bash
-# Start Fuseki
 docker compose up -d
-
-# Install dependencies (cached from the integration — should be fast)
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-
-# Load the KG
-python load_dataset.py
-
-# Run the autograder
-pytest tests/ -v
+docker compose logs -f neo4j | head  # wait for "Started."
 ```
 
-## What is shipped working — do not modify
+Python environment:
 
-- `pipeline_base.py` — vendored Week B integration pipeline (reference baseline)
-- `linker/` — reference entity linker
-- `intent/` — reference intent classifier
-- `sparql/` — reference SPARQL templates
-- `extension_a/types.py` — Trace dataclass
-- `data/recipes_kg.ttl` — the KG
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python load_fixture.py     # ~1-2 min on first run (downloads MiniLM)
+pytest tests/ -v           # all green when you're done
+```
 
-The baseline regression test re-imports `pipeline_base` and exercises one query against it; modifying the reference modules will likely break this test.
+## Tests
 
-## What you author
+The autograder runs the following checks:
 
-- `extension_a/trace.py` (if you chose direction a) or `extension_b/fallback.py` (if you chose direction b)
-- `DIRECTION.md` — declare which direction
-- Update this README's "Direction notes" section with your design decisions, eval observations, and one tradeoff.
+- Vector index `recipe_descriptions` exists and is ONLINE; every
+  Recipe has a 384-dim embedding.
+- `vector_candidates(...)` returns candidates with `recipe_id` and
+  `score` in [0, 1].
+- `expand_context(...)` returns non-empty cuisine and ingredients for
+  a known recipe.
+- `fuse(...)` ranks according to the documented combination rule.
+- `hybrid_retrieve` achieves a recall@10 threshold across the 8 eval
+  queries.
+- Identity Discipline: no duplicate `:Entity.id`.
 
-## Direction notes (replace this section)
+## How to submit
 
-> Replace this section with your direction choice, your design decisions, the one specific case where your extension changed the pipeline's behavior, and the tradeoff you had to make.
+See `FORK-SUBMIT.md`.
 
 ---
 

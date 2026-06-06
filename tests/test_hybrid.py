@@ -1,0 +1,231 @@
+"""Hybrid GraphRAG retrieval autograder."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Fixture acceptance
+# ---------------------------------------------------------------------------
+
+EXPECTED_COUNTS = {
+    "Recipe": 50,
+    "Cuisine": 8,
+    "Ingredient": 15,
+    "Author": 5,
+    "Technique": 5,
+}
+
+
+def test_load_fixture_acceptance(neo4j_driver):
+    """The fixture is loaded with the expected node counts."""
+    with neo4j_driver.session() as session:
+        for label, expected in EXPECTED_COUNTS.items():
+            actual = session.run(
+                f"MATCH (n:{label}) RETURN count(n) AS c"
+            ).single()["c"]
+            assert actual == expected, (
+                f"{label} count mismatch: got {actual}, expected {expected}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Vector search
+# ---------------------------------------------------------------------------
+
+def test_vector_search_returns_candidates(neo4j_driver, embedder):
+    from retrieval.vector_search import vector_candidates
+
+    results = vector_candidates(
+        neo4j_driver, embedder,
+        "stir-fried spicy chicken with peppercorn",
+        k=10,
+    )
+    assert isinstance(results, list)
+    assert len(results) >= 1, "vector_candidates returned no candidates"
+    assert len(results) <= 10
+    for r in results:
+        assert "recipe_id" in r and isinstance(r["recipe_id"], str)
+        assert "score" in r and isinstance(r["score"], (int, float))
+        assert 0.0 <= r["score"] <= 1.0, (
+            f"vector_candidates score {r['score']} not in [0, 1]"
+        )
+
+    # Sorted by score DESC.
+    scores = [r["score"] for r in results]
+    assert scores == sorted(scores, reverse=True), (
+        "vector_candidates results must be sorted by score DESC"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Traversal
+# ---------------------------------------------------------------------------
+
+def test_expand_context_returns_neighbors(neo4j_driver):
+    from retrieval.traversal import expand_context
+
+    # recipe:011 = Margherita Pizza; has cuisine, author, and ingredients in
+    # the fixture.
+    context = expand_context(neo4j_driver, "recipe:011")
+    assert isinstance(context, dict)
+    assert set(context.keys()) >= {"cuisine", "author", "ingredients"}
+    assert context["cuisine"] == "Italian", (
+        f"Margherita Pizza cuisine should be Italian, got {context['cuisine']}"
+    )
+    assert context["author"] is not None and context["author"] != "", (
+        f"Margherita Pizza should have an author, got {context['author']}"
+    )
+    assert isinstance(context["ingredients"], list)
+    assert len(context["ingredients"]) >= 1, (
+        f"Margherita Pizza should have ingredients, got {context['ingredients']}"
+    )
+    # Ingredients should be sorted (deterministic).
+    assert context["ingredients"] == sorted(context["ingredients"]), (
+        "expand_context ingredients list must be alphabetically sorted"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Fusion
+# ---------------------------------------------------------------------------
+
+def test_fuse_ranks_correctly():
+    """With controlled scores, the documented fusion rule must hold."""
+    from retrieval.fuse import fuse, STRUCTURAL_BOOST_PER_FIELD
+
+    vector_results = [
+        {"recipe_id": "r:A", "name": "A", "score": 0.90},  # rich context
+        {"recipe_id": "r:B", "name": "B", "score": 0.95},  # bare context
+        {"recipe_id": "r:C", "name": "C", "score": 0.80},  # partial context
+    ]
+    contexts = {
+        "r:A": {"cuisine": "Italian", "author": "X", "ingredients": ["basil"]},
+        "r:B": {"cuisine": None,      "author": None, "ingredients": []},
+        "r:C": {"cuisine": "Asian",   "author": None, "ingredients": ["ginger"]},
+    }
+    ranked = fuse(vector_results, contexts)
+
+    # Expected fused scores:
+    # A = 0.90 + 3 * BOOST
+    # B = 0.95 + 0
+    # C = 0.80 + 2 * BOOST
+    boost = STRUCTURAL_BOOST_PER_FIELD
+    expected = {
+        "r:A": 0.90 + 3 * boost,
+        "r:B": 0.95,
+        "r:C": 0.80 + 2 * boost,
+    }
+    for entry in ranked:
+        assert entry["score"] == pytest.approx(
+            expected[entry["recipe_id"]], abs=1e-6
+        ), (
+            f"Fused score for {entry['recipe_id']}: got {entry['score']}, "
+            f"expected {expected[entry['recipe_id']]}"
+        )
+
+    # Sorted DESC.
+    actual_scores = [e["score"] for e in ranked]
+    assert actual_scores == sorted(actual_scores, reverse=True), (
+        "Fused results must be sorted by score DESC"
+    )
+
+    # Context attached.
+    for entry in ranked:
+        assert entry["context"] == contexts[entry["recipe_id"]]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end recall@10
+# ---------------------------------------------------------------------------
+
+# Pinned 2026-06-05 against the reference hybrid retriever
+# (answer-key.md §§5.2-5.5): mean recall@10 ≈ 0.82 on the 8-query eval
+# set. Pin 0.60 leaves ~22pt headroom so a learner who lands the vector
+# layer but stops short of structural fusion still passes.
+RECALL_AT_10_THRESHOLD = 0.60
+
+
+def test_hybrid_recall_at_10(neo4j_driver, embedder):
+    """hybrid_retrieve must achieve recall@10 >= threshold across eval queries."""
+    from retrieval.hybrid import hybrid_retrieve
+
+    eval_path = Path(__file__).resolve().parent.parent / "data" / "eval_queries.json"
+    eval_set = json.loads(eval_path.read_text())
+
+    recalls = []
+    per_query = []
+    for item in eval_set:
+        query = item["query"]
+        gold = set(item["gold_recipe_ids"])
+        results = hybrid_retrieve(neo4j_driver, embedder, query, k=10)
+        retrieved = {r["recipe_id"] for r in results}
+        hits = len(gold & retrieved)
+        recall = hits / len(gold) if gold else 0.0
+        recalls.append(recall)
+        per_query.append((query, recall, sorted(gold & retrieved)))
+
+    mean_recall = sum(recalls) / len(recalls)
+    print("\n[hybrid_recall_at_10] per-query recall:")
+    for q, r, hits in per_query:
+        print(f"  {r:.2f}  {q!r}  hits={hits}")
+    print(f"[hybrid_recall_at_10] mean recall@10 = {mean_recall:.3f}")
+
+    assert mean_recall >= RECALL_AT_10_THRESHOLD, (
+        f"Mean recall@10 = {mean_recall:.3f} < threshold "
+        f"{RECALL_AT_10_THRESHOLD}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Starter sentinel
+# ---------------------------------------------------------------------------
+
+def test_starter_unmodified_fails():
+    """Sentinel: unmodified starter modules raise NotImplementedError.
+
+    This test PASSES on the unmodified starter (the four learner modules
+    are all stubs that raise NotImplementedError). It FAILS once the
+    learner has implemented all four — at which point the rest of the
+    autograder takes over as the real check.
+    """
+    from retrieval import vector_search, traversal, fuse, hybrid
+
+    stubs_raising = 0
+    try:
+        vector_search.vector_candidates(None, None, "x", k=1)
+    except NotImplementedError:
+        stubs_raising += 1
+    except Exception:
+        pass
+
+    try:
+        traversal.expand_context(None, "recipe:001")
+    except NotImplementedError:
+        stubs_raising += 1
+    except Exception:
+        pass
+
+    try:
+        fuse.fuse([], {})
+    except NotImplementedError:
+        stubs_raising += 1
+    except Exception:
+        pass
+
+    try:
+        hybrid.hybrid_retrieve(None, None, "x", k=1)
+    except NotImplementedError:
+        stubs_raising += 1
+    except Exception:
+        pass
+
+    assert stubs_raising < 4, (
+        "All four retrieval modules still raise NotImplementedError — "
+        "implement them and rerun pytest."
+    )
