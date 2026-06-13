@@ -16,6 +16,20 @@
 //
 // Recipe descriptions are short, distinctive natural-language sentences
 // designed for embedding-based retrieval.
+//
+// Structural-context design.
+//   40 of the 50 recipes have full structural context (cuisine + author +
+//   ingredients), so fuse() awards them the full +0.3 boost.
+//   10 recipes ship deliberately context-bare — they are vector-indexed
+//   (description + embedding) but carry no :OF_CUISINE, :BY_AUTHOR, or
+//   :USES_INGREDIENT edges. fuse() therefore awards them 0 boost, and a
+//   correct fusion implementation demotes them below context-rich gold
+//   recipes whose vector scores are close. The bare recipes are 008, 010,
+//   014, 017, 018, 019, 024, 030, 034, 039 — search for "bare-context"
+//   in this file to see the commented-out relationship statements. This
+//   is what makes test_fusion_changes_ranking_from_vector_alone a real
+//   gate (a learner who bypasses the structural boost would produce a
+//   fused ranking identical to the vector ranking on every query).
 
 // ---- Identity Discipline constraint ---------------------------------------
 CREATE CONSTRAINT entity_id_unique IF NOT EXISTS
@@ -137,38 +151,38 @@ MATCH (r:Recipe {id:'recipe:004'}), (c:Cuisine {id:'cuisine:sichuan'})  MERGE (r
 MATCH (r:Recipe {id:'recipe:005'}), (c:Cuisine {id:'cuisine:sichuan'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:006'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:007'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:008'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:008'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:009'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:010'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:010'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:011'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:012'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:013'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:014'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:014'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:015'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:016'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:017'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:018'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:019'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:017'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:018'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:019'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:020'}), (c:Cuisine {id:'cuisine:italian'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:021'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:022'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:023'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:024'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:024'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:025'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:026'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:027'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:028'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:029'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:030'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:030'}), (c:Cuisine {id:'cuisine:japanese'}) MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:031'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:032'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:033'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:034'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:034'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:035'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:036'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:037'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:038'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
-MATCH (r:Recipe {id:'recipe:039'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:039'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:040'}), (c:Cuisine {id:'cuisine:mexican'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:041'}), (c:Cuisine {id:'cuisine:chinese'})  MERGE (r)-[:OF_CUISINE]->(c);
 MATCH (r:Recipe {id:'recipe:042'}), (c:Cuisine {id:'cuisine:sichuan'})  MERGE (r)-[:OF_CUISINE]->(c);
@@ -189,38 +203,38 @@ MATCH (r:Recipe {id:'recipe:004'}), (a:Author {id:'author:chen'})   MERGE (r)-[:
 MATCH (r:Recipe {id:'recipe:005'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:006'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:007'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:008'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:008'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:009'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:010'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:010'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:011'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:012'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:013'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:014'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:014'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:015'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:016'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:017'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:018'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:019'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:017'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:018'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:019'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:020'}), (a:Author {id:'author:rossi'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:021'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:022'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:023'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:024'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:024'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:025'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:026'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:027'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:028'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:029'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:030'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:030'}), (a:Author {id:'author:tanaka'}) MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:031'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:032'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:033'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:034'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:034'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:035'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:036'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:037'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:038'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
-MATCH (r:Recipe {id:'recipe:039'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:039'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:040'}), (a:Author {id:'author:reyes'})  MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:041'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
 MATCH (r:Recipe {id:'recipe:042'}), (a:Author {id:'author:chen'})   MERGE (r)-[:BY_AUTHOR]->(a);
@@ -249,8 +263,8 @@ MATCH (r:Recipe {id:'recipe:006'}), (i:Ingredient {id:'ingredient:chicken'})    
 MATCH (r:Recipe {id:'recipe:006'}), (i:Ingredient {id:'ingredient:ginger'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:007'}), (i:Ingredient {id:'ingredient:garlic'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:007'}), (i:Ingredient {id:'ingredient:soy-sauce'})       MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:008'}), (i:Ingredient {id:'ingredient:chicken'})         MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:010'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:008'}), (i:Ingredient {id:'ingredient:chicken'})         MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:010'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:011'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:011'}), (i:Ingredient {id:'ingredient:mozzarella'})      MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:011'}), (i:Ingredient {id:'ingredient:basil'})           MERGE (r)-[:USES_INGREDIENT]->(i);
@@ -260,10 +274,10 @@ MATCH (r:Recipe {id:'recipe:013'}), (i:Ingredient {id:'ingredient:tomato'})     
 MATCH (r:Recipe {id:'recipe:013'}), (i:Ingredient {id:'ingredient:mozzarella'})      MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:013'}), (i:Ingredient {id:'ingredient:basil'})           MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:013'}), (i:Ingredient {id:'ingredient:olive-oil'})       MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:014'}), (i:Ingredient {id:'ingredient:basil'})           MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:014'}), (i:Ingredient {id:'ingredient:olive-oil'})       MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:014'}), (i:Ingredient {id:'ingredient:basil'})           MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:014'}), (i:Ingredient {id:'ingredient:olive-oil'})       MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:015'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:018'}), (i:Ingredient {id:'ingredient:olive-oil'})       MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:018'}), (i:Ingredient {id:'ingredient:olive-oil'})       MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:020'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:020'}), (i:Ingredient {id:'ingredient:mozzarella'})      MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:020'}), (i:Ingredient {id:'ingredient:basil'})           MERGE (r)-[:USES_INGREDIENT]->(i);
@@ -272,7 +286,7 @@ MATCH (r:Recipe {id:'recipe:022'}), (i:Ingredient {id:'ingredient:nori'})       
 MATCH (r:Recipe {id:'recipe:022'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:023'}), (i:Ingredient {id:'ingredient:nori'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:023'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:024'}), (i:Ingredient {id:'ingredient:tofu'})            MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:024'}), (i:Ingredient {id:'ingredient:tofu'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:025'}), (i:Ingredient {id:'ingredient:chicken'})         MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:025'}), (i:Ingredient {id:'ingredient:soy-sauce'})       MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:028'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
@@ -284,17 +298,17 @@ MATCH (r:Recipe {id:'recipe:031'}), (i:Ingredient {id:'ingredient:lime'})       
 MATCH (r:Recipe {id:'recipe:032'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:033'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:033'}), (i:Ingredient {id:'ingredient:cilantro'})        MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:cilantro'})        MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:cilantro'})        MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:034'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:035'}), (i:Ingredient {id:'ingredient:chicken'})         MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:037'}), (i:Ingredient {id:'ingredient:rice'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:037'}), (i:Ingredient {id:'ingredient:tomato'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:037'}), (i:Ingredient {id:'ingredient:garlic'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:038'}), (i:Ingredient {id:'ingredient:garlic'})          MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:038'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:039'}), (i:Ingredient {id:'ingredient:cilantro'})        MERGE (r)-[:USES_INGREDIENT]->(i);
-MATCH (r:Recipe {id:'recipe:039'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:039'}), (i:Ingredient {id:'ingredient:cilantro'})        MERGE (r)-[:USES_INGREDIENT]->(i);
+// [bare-context, fusion-differentiation] MATCH (r:Recipe {id:'recipe:039'}), (i:Ingredient {id:'ingredient:lime'})            MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:040'}), (i:Ingredient {id:'ingredient:chicken'})         MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:040'}), (i:Ingredient {id:'ingredient:chili'})           MERGE (r)-[:USES_INGREDIENT]->(i);
 MATCH (r:Recipe {id:'recipe:041'}), (i:Ingredient {id:'ingredient:tofu'})            MERGE (r)-[:USES_INGREDIENT]->(i);

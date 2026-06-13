@@ -203,6 +203,63 @@ def test_hybrid_recall_at_10(neo4j_driver, embedder):
 
 
 # ---------------------------------------------------------------------------
+# Fusion must materially change ranking (anti-bypass gate)
+# ---------------------------------------------------------------------------
+
+# 10 fixture recipes ship deliberately bare of cuisine / author / ingredient
+# context (see data/recipes_kg.cypher — search for "bare-context"). Those
+# recipes get a fusion boost of 0; gold recipes with full context get +0.3.
+# A learner who implements fuse() as `return vector_results` (bypassing the
+# structural boost) will produce a ranking that differs from the fused
+# ranking only by zero positions — this test rejects that bypass.
+RANKING_DIFFERENCE_MIN_QUERIES = 3
+
+
+def test_fusion_changes_ranking_from_vector_alone(neo4j_driver, embedder):
+    """Verifies fusion is not a no-op against the fixture.
+
+    For each eval query, compares the top-10 fused ranking against the
+    top-10 raw-vector ranking. Asserts the two rankings differ on at least
+    `RANKING_DIFFERENCE_MIN_QUERIES` of the 8 eval queries. A learner who
+    bypasses the structural boost (e.g., `return vector_results`) will
+    produce identical rankings on every query and fail this gate.
+    """
+    from retrieval.hybrid import hybrid_retrieve
+    from retrieval.vector_search import vector_candidates
+
+    eval_path = Path(__file__).resolve().parent.parent / "data" / "eval_queries.json"
+    eval_set = json.loads(eval_path.read_text())
+
+    differing = 0
+    per_query = []
+    for item in eval_set:
+        query = item["query"]
+        fused = hybrid_retrieve(neo4j_driver, embedder, query, k=10)
+        vector = vector_candidates(neo4j_driver, embedder, query, k=10)
+        fused_ids = [r["recipe_id"] for r in fused]
+        vector_ids = [r["recipe_id"] for r in vector]
+        if fused_ids != vector_ids:
+            differing += 1
+        per_query.append((query, fused_ids != vector_ids))
+
+    print("\n[fusion_changes_ranking] per-query ranking changed (fused != vector):")
+    for q, changed in per_query:
+        print(f"  {'YES' if changed else 'NO ':>3}  {q!r}")
+    print(f"[fusion_changes_ranking] {differing}/{len(eval_set)} queries "
+          f"with differing ranking (need >= {RANKING_DIFFERENCE_MIN_QUERIES})")
+
+    assert differing >= RANKING_DIFFERENCE_MIN_QUERIES, (
+        f"Fusion produced the same ranking as vector-alone on "
+        f"{len(eval_set) - differing}/{len(eval_set)} queries. The fixture "
+        f"ships 10 deliberately context-bare recipes so that fusion must "
+        f"materially demote them below context-rich gold. If your fused "
+        f"ranking matches vector ranking, fuse() is bypassing the "
+        f"structural boost — check that you are summing the per-field "
+        f"boosts into the score and re-sorting DESC."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Parameterization: vector_search.py must use $params, not f-strings
 # ---------------------------------------------------------------------------
 
