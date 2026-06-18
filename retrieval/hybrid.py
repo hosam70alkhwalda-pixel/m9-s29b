@@ -36,12 +36,12 @@ def hybrid_retrieve(
     Returns: a list of at most k dicts, each {recipe_id, name, score, context},
     ordered by fused score DESC.
     """
-    # TODO: Call vector_candidates(...) to get the top-k vector candidates.
+    vector_results = vector_candidates(driver, embedder, query, k=k)
 
-    # TODO: For each candidate, call expand_context(...) to gather its
-    #       1-hop structural context. Build a {recipe_id: context_dict} map.
+    contexts = {
+        entry["recipe_id"]: expand_context(driver, entry["recipe_id"])
+        for entry in vector_results
+    }
 
-    # TODO: Call fuse(...) to combine vector + structural signals into a
-    #       single ranking, then return the top-k entries.
-
-    raise NotImplementedError("hybrid_retrieve not implemented")
+    fused = fuse(vector_results, contexts)
+    return fused[:k]
