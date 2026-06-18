@@ -16,6 +16,20 @@ from __future__ import annotations
 STRUCTURAL_BOOST_PER_FIELD = 0.1
 
 
+def _is_non_empty(value) -> bool:
+    """A field is "non-empty" iff it's not None, and — for list fields —
+    also not an empty list. Implemented generically (rather than relying
+    on Python truthiness) so an empty string would NOT be silently
+    treated the same as None: the documented rule only excludes None
+    (and empty lists), nothing else.
+    """
+    if value is None:
+        return False
+    if isinstance(value, list):
+        return len(value) > 0
+    return True
+
+
 def fuse(
     vector_results: list[dict],
     contexts: dict[str, dict],
@@ -35,19 +49,35 @@ def fuse(
       - "context" (dict): the context dict from `contexts`
     Ordered by fused score DESC.
 
-    Fusion rule (use this exact rule):
+    Fusion rule (used exactly as documented):
       final_score = vector_score
                   + STRUCTURAL_BOOST_PER_FIELD * (1 if cuisine is non-empty else 0)
                   + STRUCTURAL_BOOST_PER_FIELD * (1 if author  is non-empty else 0)
                   + STRUCTURAL_BOOST_PER_FIELD * (1 if ingredients is non-empty else 0)
-
-    A "non-empty" context field is one that is not None and (for the list
-    field) not an empty list.
     """
-    # TODO: For each entry in vector_results, look up its context dict,
-    #       compute the fused score per the rule above, and assemble the
-    #       output dict.
+    empty_context = {"cuisine": None, "author": None, "ingredients": []}
 
-    # TODO: Sort the resulting list by fused score DESC and return it.
+    fused: list[dict] = []
+    for entry in vector_results:
+        recipe_id = entry["recipe_id"]
+        context = contexts.get(recipe_id, empty_context)
 
-    raise NotImplementedError("fuse not implemented")
+        boost = 0.0
+        if _is_non_empty(context.get("cuisine")):
+            boost += STRUCTURAL_BOOST_PER_FIELD
+        if _is_non_empty(context.get("author")):
+            boost += STRUCTURAL_BOOST_PER_FIELD
+        if _is_non_empty(context.get("ingredients")):
+            boost += STRUCTURAL_BOOST_PER_FIELD
+
+        fused.append(
+            {
+                "recipe_id": recipe_id,
+                "name": entry["name"],
+                "score": entry["score"] + boost,
+                "context": context,
+            }
+        )
+
+    fused.sort(key=lambda d: d["score"], reverse=True)
+    return fused
